@@ -76,13 +76,16 @@ async def recognize(file: UploadFile = File(...)):
     encoded_face = face_encoding.tobytes()
     c.execute("SELECT name, email FROM users")
     rows = c.fetchall()
-    for row in rows:
-        if face_recognition.compare_faces(
-            [np.frombuffer(row[2], dtype=np.float64)], face_encoding
-        ):
-            return {"name": row[0], "email": row[1]}
-
-    return {"error": "No matching user found."}
+    return next(
+        (
+            {"name": row[0], "email": row[1]}
+            for row in rows
+            if face_recognition.compare_faces(
+                [np.frombuffer(row[2], dtype=np.float64)], face_encoding
+            )
+        ),
+        {"error": "No matching user found."},
+    )
 
 
 @app.get("/users")
@@ -90,8 +93,7 @@ def get_users() -> List[dict]:
     # Retrieve all users from the database
     c.execute("SELECT name, email FROM users")
     rows = c.fetchall()
-    users = [{"name": row[0], "email": row[1]} for row in rows]
-    return users
+    return [{"name": row[0], "email": row[1]} for row in rows]
 
 
 @app.put("/users/{name}")
